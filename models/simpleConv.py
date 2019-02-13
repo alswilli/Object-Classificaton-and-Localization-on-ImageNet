@@ -41,6 +41,6 @@ def build_model(img_width=224, img_height=224, channels=3):
     # model.add(Dropout(0.25))
 
     model.add(Dense(5))
-    model.add(Activation('sigmoid'))
+    model.add(Activation('softmax'))
 
     return model
