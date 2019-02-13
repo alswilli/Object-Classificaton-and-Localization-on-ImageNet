@@ -1,3 +1,6 @@
 /tiny-imagenet-200/*
 yolo.h5
 .ipynb_checkpoints
+.DS_STORE
+__pycache__/
+*.py[cod]
