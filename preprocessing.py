@@ -4,7 +4,8 @@ from sklearn.model_selection import train_test_split
 from keras.preprocessing import image
 import h5py
 import numpy as np
-
+from imgaug import augmenters as iaa
+import matplotlib.pyplot as plt
 
 dataPath = 'RealImageNet/ImageNetSubsample/Data/CLS-LOC'
 trainPath = os.path.join(dataPath, 'train')
@@ -13,7 +14,8 @@ outputModelPath = os.path.join('output','saved-models')
 outputFigPath = os.path.join('output', 'figs')
 h5Path = os.path.join('output', 'image-h5')
 bboxesPath = os.path.join('output', 'bboxes.csv')
-
+lines = [line.rstrip('\n').split() for line in open('RealImageNet/LOC_synset_mapping.txt')]
+wnids_to_words = {line[0]:' '.join(line[1:]) for line in lines }
 
 
 img_width, img_height = 224, 224
@@ -69,13 +71,12 @@ def parseBoundingBoxes():
 
 """
 Reads image data from the training folder, applies augmentation,
-and saves all image arrays to .h5 files. Each .h5 has datasets: 'train', 'val', 'train-aug'.
+and saves all image arrays to .h5 files. Each .h5 has datasets: 'x_train', 'y_train, 'x_val', 'y_val'.
 
 NOTE: ONLY PARSES IMAGES THAT HAVE BOUNDING BOXES
 
-'train': contains 80% of all original data
-'val': contains 20% of all original data
-'train-aug': contains augmentations of all data in 'train' dataset. 
+'_train': contains 80% of all original data
+'_val': contains 20% of all original data
 
 
 """
@@ -112,14 +113,13 @@ def parseImages(folders, saveToH5 = True, img_width=224, img_height=224):
             output.close()
         
 
-    
 """
 Loads a single h5 file, from the default h5 output path, given a training class id.
 
-The file should already exist and have been created with parseImages
+The file should already exist and have been created with parseImages, or it will return empty. 
 """
 
-def loadH5(id ):
+def loadH5(id):
     x_t, y_t, x_v, y_v = [], [], [], []
     path = os.path.join(h5Path, id + ".h5")
     if os.path.exists(path):
@@ -129,8 +129,15 @@ def loadH5(id ):
     else:
         print("NO SUCH FILE {0} EXISTS. Run parseImages([{1}]) to fix the issue.".format(path, id))
     
+    y_t = [y.decode('utf-8') for y in y_t]
+    y_v = [y.decode('utf-8') for y in y_v]
     return x_t, y_t, x_v, y_v 
 
+"""
+Loads a list of h5 files, from the default h5 output path, given a list of training class id.
+
+The file should already exist and have been created with parseImages, or it will be skipped over. 
+"""
 def loadH5s(ids):
     x_train, y_train, x_val, y_val = [],[],[],[]
 
@@ -143,6 +150,42 @@ def loadH5s(ids):
 
     return x_train, y_train, x_val, y_val 
 
-print("Checking to make sure output directories are created..")
-make_output_dirs([outputModelPath, outputFigPath, h5Path])
-print("..done")
+def translateID(id):
+    return wnids_to_words[id]
+
+def getClassLabels():
+    boxesDF = pd.read_csv(bboxesPath)
+    labels = boxesDF.ids.unique()
+    return labels
+
+
+"""
+Augments data and returns x_aug, y_aug
+"""
+def augmentData(x, y, augments = []):
+    x_aug, y_aug = [], []
+    for i in range(0, len(x)):
+        img = x[i]
+        for aug in augments:
+            augmented = aug.augment_image(img)
+            x_aug.append(augmented)
+            y_aug.append(y[i])
+    
+    return x_aug, y_aug
+
+def displayImage(x):
+    plt.imshow(x)
+
+
+def topClasses(prediction, classes, n=3):
+    idx = np.argsort(prediction)[-n:][::-1]
+    tups = []
+    for i in idx:
+        tups.append((translateID(classes[i]), prediction[i]))
+    return tups
+
+
+def init():
+    print("Checking to make sure output directories are created..")
+    make_output_dirs([outputModelPath, outputFigPath, h5Path])
+    print("..done")
