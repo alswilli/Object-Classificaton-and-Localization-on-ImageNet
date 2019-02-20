@@ -123,10 +123,11 @@ def parseImages(folders, filename, img_width=224, img_height=224):
         print("Parsing bounding boxes before image data....")
         parseBoundingBoxes()
         print("...done")
-    
+    imgCount = 0
+    path = os.path.join(h5Path, filename)
     boxesDF = pd.read_csv(bboxesPath)
     for folder in folders:
-        print('Parsing images for class ID: {0}'.format(folder))
+        print('Parsing images for class ID: {0}. '.format(folder), end="", flush=True)
         x_train = []
         y_train = []
         imageFiles = boxesDF[boxesDF.ids == folder].files.unique()
@@ -137,12 +138,13 @@ def parseImages(folders, filename, img_width=224, img_height=224):
                 img = image.img_to_array(img)/255.
                 x_train.append(img)
                 y_train.append(folder)
-               
+        imgCount += len(x_train)
+        print("Found {0} images. ".format(len(x_train)))
         df_train = pd.DataFrame({'x': x_train, 'y': y_train})
         df_train, df_val = train_test_split(df_train, test_size=0.2)
          
-        path = os.path.join(h5Path, filename)
-    
+        
+        print("Writing to h5 file: {0}".format(path))
         if not os.path.exists(path):
             output = h5py.File(path, 'w')
             output.create_dataset('x_train', data = list(df_train.x), chunks=True, maxshape=(None,img_width, img_height, 3))
@@ -167,7 +169,8 @@ def parseImages(folders, filename, img_width=224, img_height=224):
 
                 hf['y_val'].resize((hf['y_val'].shape[0] + df_val.y.shape[0]), axis=0)
                 hf['y_val'][-df_val.y.shape[0]:] = df_val.y.astype('S')
-
+    
+    print("Wrote {0} images to {1}".format(imgCount, path))
 
 """no going to work. need to shuffle all datasets to the same index. """
 def shuffleH5(filename):
