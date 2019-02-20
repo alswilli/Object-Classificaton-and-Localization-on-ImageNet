@@ -6,6 +6,8 @@ import h5py
 import numpy as np
 from imgaug import augmenters as iaa
 import matplotlib.pyplot as plt
+import random
+import time
 
 dataPath = 'RealImageNet/ImageNetSubsample/Data/CLS-LOC'
 trainPath = os.path.join(dataPath, 'train')
@@ -80,7 +82,7 @@ NOTE: ONLY PARSES IMAGES THAT HAVE BOUNDING BOXES
 
 
 """
-def parseImages(folders, saveToH5 = True, img_width=224, img_height=224):
+def parseImagesOLD(folders, saveToH5 = True, img_width=224, img_height=224):
     if not os.path.exists(bboxesPath):
         print("Parsing bounding boxes before image data....")
         parseBoundingBoxes()
@@ -111,17 +113,83 @@ def parseImages(folders, saveToH5 = True, img_width=224, img_height=224):
             output.create_dataset('x_val', data = list(df_val.x))
             output.create_dataset('y_val', data = df_val.y.astype('S'))
             output.close()
-        
+
 
 """
-Loads a single h5 file, from the default h5 output path, given a training class id.
+Parse images to one giant h5 file. Should shuffle entries. 
+"""
+def parseImages(folders, filename, img_width=224, img_height=224):
+    if not os.path.exists(bboxesPath):
+        print("Parsing bounding boxes before image data....")
+        parseBoundingBoxes()
+        print("...done")
+    
+    boxesDF = pd.read_csv(bboxesPath)
+    for folder in folders:
+        print('Parsing images for class ID: {0}'.format(folder))
+        x_train = []
+        y_train = []
+        imageFiles = boxesDF[boxesDF.ids == folder].files.unique()
+        for imageFile in imageFiles:
+            imagePath = os.path.join(trainPath, folder, imageFile)
+            if os.path.exists(imagePath):
+                img = image.load_img(imagePath, target_size=(img_width, img_height))
+                img = image.img_to_array(img)/255.
+                x_train.append(img)
+                y_train.append(folder)
+               
+        df_train = pd.DataFrame({'x': x_train, 'y': y_train})
+        df_train, df_val = train_test_split(df_train, test_size=0.2)
+         
+        path = os.path.join(h5Path, filename)
+    
+        if not os.path.exists(path):
+            output = h5py.File(path, 'w')
+            output.create_dataset('x_train', data = list(df_train.x), chunks=True, maxshape=(None,img_width, img_height, 3))
+            output.create_dataset('y_train', data = df_train.y.astype('S'),chunks=True, maxshape=(None,))
+            output.create_dataset('x_val', data = list(df_val.x),chunks=True, maxshape=(None,img_width, img_height, 3))
+            output.create_dataset('y_val', data = df_val.y.astype('S'),chunks=True, maxshape=(None,))
+            output.close()
+        else:
+            with h5py.File(path, 'a') as hf:
+                # print(hf['x_train'].shape)
+                hf['x_train'].resize((hf['x_train'].shape[0] + df_train.x.shape[0], img_width, img_height, 3))
+                # print(len(x_train))
+                # print(df_train.x.shape)
+                
+                hf['x_train'][-df_train.x.shape[0]:] = list(df_train.x)
+
+                hf['y_train'].resize((hf['y_train'].shape[0] + df_train.y.shape[0]), axis=0)
+                hf['y_train'][-df_train.y.shape[0]:] = df_train.y.astype('S')
+
+                hf['x_val'].resize((hf['x_val'].shape[0] + df_val.x.shape[0], img_width, img_height, 3))
+                hf['x_val'][-df_val.x.shape[0]:] = list(df_val.x)
+
+                hf['y_val'].resize((hf['y_val'].shape[0] + df_val.y.shape[0]), axis=0)
+                hf['y_val'][-df_val.y.shape[0]:] = df_val.y.astype('S')
+
+
+"""no going to work. need to shuffle all datasets to the same index. """
+def shuffleH5(filename):
+    path = os.path.join(h5Path, filename)
+    datasets = ['x_train', 'y_train', 'x_val', 'y_val']
+    with h5py.File(path, 'r+') as h5f:
+        for dataset in datasets:
+            print('Shuffling dataset: {0}'.format(dataset))
+            t1 = time.time()
+            random.shuffle(h5f[dataset])
+            t2 = time.time()
+            print('Time to shuffle {:.3f} seconds'.format(str(t2-t1)))
+
+"""
+Loads a single h5 file, from the default h5 output path. 
 
 The file should already exist and have been created with parseImages, or it will return empty. 
 """
 
-def loadH5(id):
+def loadH5(filename):
     x_t, y_t, x_v, y_v = [], [], [], []
-    path = os.path.join(h5Path, id + ".h5")
+    path = os.path.join(h5Path, filename)
     if os.path.exists(path):
         data = h5py.File(path, 'r')
         x_t, y_t, x_v, y_v =  data['x_train'][:], data['y_train'][:], data['x_val'][:], data['y_val'][:]
@@ -142,7 +210,7 @@ def loadH5s(ids):
     x_train, y_train, x_val, y_val = [],[],[],[]
 
     for id in ids:
-        x_t, y_t, x_v, y_v = loadH5(id)
+        x_t, y_t, x_v, y_v = loadH5(id + ".h5")
         x_train.extend(x_t)
         y_train.extend(y_t)
         x_val.extend(x_v)
@@ -176,7 +244,12 @@ def augmentData(x, y, augments = []):
 def displayImage(x):
     plt.imshow(x)
 
+"""
+Takes in a prediction array (the kind Keras model.predict() produces), and a list of classes.
 
+Returns a list of n tuples, corresponding to the top-n probable classes as judged by predictions. 
+Also decodes class labels into their true value. 
+"""
 def topClasses(prediction, classes, n=3):
     idx = np.argsort(prediction)[-n:][::-1]
     tups = []
