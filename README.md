@@ -1,3 +1,3 @@
 # cmps240
-CMPS240 Project repo
+CMPS240 Project repo \n
 Resources:
