@@ -3,4 +3,4 @@ CMPS240 Project repo
 
 Resources: 
 1. SSD: https://github.com/pierluigiferrari/ssd_keras
-2. Kaggle: https://www.kaggle.com/c/imagenet-object-localization-challenge
+  - focus on SSD_7 (smallest model). Need to just get the model to work with our imagenet data. 
