@@ -12,6 +12,7 @@ import time
 
 dataPath = 'RealImageNet/ImageNetSubsample/Data/CLS-LOC'
 trainPath = os.path.join(dataPath, 'train')
+baseModelName = "model-{0}-{1}-{2}"
 
 outputModelPath = os.path.join('output','saved-models')
 outputFigPath = os.path.join('output', 'figs')
