@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
+import keras
 from keras.preprocessing import image
 import h5py
 import numpy as np
@@ -265,3 +266,5 @@ def init():
     print("Checking to make sure output directories are created..")
     make_output_dirs([outputModelPath, outputFigPath, h5Path])
     print("..done")
+
+
