@@ -4,7 +4,7 @@ from keras.layers import Activation, Dropout, Flatten, Dense, Reshape
 from keras import backend as K
 
 
-def build_model(img_width=224, img_height=224, channels=3):
+def build_model(n_classes, img_width=224, img_height=224, channels=3):
     if K.image_data_format() == 'channels_first':
         input_shape = (channels, img_width, img_height)
     else:
@@ -24,7 +24,7 @@ def build_model(img_width=224, img_height=224, channels=3):
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
-    model.add(Conv2D(128, (3, 3)))
+    model.add(Conv2D(256, (3, 3)))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
@@ -40,7 +40,7 @@ def build_model(img_width=224, img_height=224, channels=3):
     # model.add(Activation('relu'))
     # model.add(Dropout(0.25))
 
-    model.add(Dense(5))
+    model.add(Dense(n_classes))
     model.add(Activation('softmax'))
 
     return model
