@@ -9,6 +9,7 @@ from imgaug import augmenters as iaa
 import matplotlib.pyplot as plt
 import random
 import time
+import utils
 
 dataPath = 'RealImageNet/ImageNetSubsample/Data/CLS-LOC'
 trainPath = os.path.join(dataPath, 'train')
@@ -268,4 +269,43 @@ def init():
     make_output_dirs([outputModelPath, outputFigPath, h5Path])
     print("..done")
 
+class DataGenerator(keras.utils.Sequence):
 
+    def __init__(self, h5db, batch_size=32, shuffle=True):
+        self.h5db = h5db
+        self.X = self.h5db['x_train']
+        self.Y = self.h5db['y_train']
+        self.data_length = len(self.X)
+        
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.index_sets = []
+        self.batch_num = 0
+        self.on_epoch_end()
+
+    def __len__(self):
+        'Calculates how many steps in an epoch'
+        return int(np.floor(len(self.h5db) / self.batch_size))
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        idxs = list(self.index_sets[self.batch_num])
+        x = self.X[idxs]
+        y = self.Y[idxs]
+        y = [k.decode('utf-8') for k in y]
+       
+        self.batch_num +=1
+
+        return x,y
+        
+
+    def on_epoch_end(self):
+        if self.shuffle:
+            idxs = np.random.permutation(self.data_length)
+        else:
+            idxs = np.arange(0, self.data_length)
+        
+        sets = utils.chunks(idxs, self.batch_size)
+        self.index_sets = [np.sort(s) for s in sets]
+        
+        self.batch_num = 0
