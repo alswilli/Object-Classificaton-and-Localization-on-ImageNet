@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelBinarizer
 import keras
 from keras.preprocessing import image
 import h5py
@@ -271,21 +272,34 @@ def init():
 
 class DataGenerator(keras.utils.Sequence):
 
-    def __init__(self, h5db, batch_size=32, shuffle=True):
+    def __init__(self, h5db, classes, batch_size=32, isValidation = False, shuffle=True, augmentations = []):
         self.h5db = h5db
-        self.X = self.h5db['x_train']
-        self.Y = self.h5db['y_train']
+  
+        if isValidation:
+            self.X = self.h5db['x_val']
+            self.Y = self.h5db['y_val']
+        else:
+            self.X = self.h5db['x_train']
+            self.Y = self.h5db['y_train']
+        
         self.data_length = len(self.X)
         
+        self.classes = classes
+        self.encoder = LabelBinarizer()
+        self.encoder = self.encoder.fit(self.classes)
+
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.index_sets = []
         self.batch_num = 0
+
+        self.augmentations = augmentations
+
         self.on_epoch_end()
 
     def __len__(self):
         'Calculates how many steps in an epoch'
-        return int(np.floor(len(self.h5db) / self.batch_size))
+        return int(np.floor(self.data_length / self.batch_size))
 
     def __getitem__(self, index):
         'Generate one batch of data'
@@ -293,7 +307,19 @@ class DataGenerator(keras.utils.Sequence):
         x = self.X[idxs]
         y = self.Y[idxs]
         y = [k.decode('utf-8') for k in y]
-       
+        
+        
+        #TODO
+        if len(self.augmentations) > 0:
+            x_aug, y_aug = augmentData(x, y, augments = self.augmentations)
+            x.extend(x_aug)
+            y.extend(y_aug)
+
+        y = self.encoder.transform(y) 
+        
+        x = np.array(x)
+        y = np.array(y)
+        
         self.batch_num +=1
 
         return x,y
