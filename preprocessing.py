@@ -481,6 +481,108 @@ class DataGenerator2(keras.utils.Sequence):
         
         self.batch_num = 0
 
+class DataGenerator3(keras.utils.Sequence):
+
+    def __init__(self, h5file, classes, batch_size=32, isValidation = False, shuffle=True, augmentations = []):
+        self.h5file = h5file
+        self.isValidation = isValidation
+        self.set = 'train'
+        if self.isValidation:
+            self.set = 'val'
+        
+
+        with h5py.File(self.h5file, 'r') as db:
+            self.data_length = len(db['x_'+self.set])
+            
+        
+        self.classes = classes
+        self.encoder = LabelBinarizer()
+        self.encoder = self.encoder.fit(self.classes)
+
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.index_sets = []
+        self.batch_num = 0
+
+        self.augmentations = augmentations
+
+        self.on_epoch_end()
+
+    def __len__(self):
+        'Calculates how many steps in an epoch'
+        return int(np.floor(self.data_length / self.batch_size))
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        # idxs = list(self.index_sets[self.batch_num])
+        with h5py.File(self.h5file, 'r') as db:
+            
+            # start = self.batch_num * self.batch_size
+            start = self.index_sets[self.batch_num]
+            
+            # x = db['x_'+self.set][start:start+self.batch_size]
+            # y = db['y_'+self.set][start:start+self.batch_size]
+            x = db['x_'+self.set][start:start+self.batch_size]
+            y = db['y_'+self.set][start:start+self.batch_size]
+            
+            
+        # print(len(y))
+        #TESTING FOR MULTIPROCESSING
+        # for k in y:
+        #     try:
+        #         k.decode('utf-8')
+        #     except:
+        #         print(y)
+        
+        y = [k.decode('utf-8') for k in y]
+        
+        
+        #TODO
+        if len(self.augmentations) > 0:
+            x_aug, y_aug = augmentData(x, y, augments = self.augmentations)
+            x.extend(x_aug)
+            y.extend(y_aug)
+
+        #TESTING FOR MULTIPROCESSING
+        nan_check = np.isnan(x)
+        x_new = []
+        y_new = []
+        for i in range(len(nan_check)):
+            if True in nan_check[i]:
+                print('NAN @ INDEX {0}'.format(i))
+                # print('Index num: {0}'.format(idxs[i]))
+            else:
+                x_new.append(x[i])
+                y_new.append(y[i])
+        
+        x = x_new
+        y = y_new
+
+    
+        x = np.array(x)
+        y = self.encoder.transform(y) 
+        y = np.array(y)
+        
+
+        self.batch_num +=1
+
+        return x,y
+        
+
+    def on_epoch_end(self):
+        idxs = [k*self.batch_size for k in range(0, len(self))]
+        np.random.shuffle(idxs)
+        # if self.shuffle:
+        #     idxs = np.random.permutation(self.data_length)
+        # else:
+        #     idxs = np.arange(0, self.data_length)
+        
+        # sets = utils.chunks(idxs, self.batch_size)
+        self.index_sets = idxs
+        
+        self.batch_num = 0
+
+
 
 def predictionsToDataframe(model, x_val, y_val, encoder):
     y_val = [k.decode('utf-8') for k in y_val]
