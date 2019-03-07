@@ -519,7 +519,7 @@ class DataGenerator3(keras.utils.Sequence):
             
             # start = self.batch_num * self.batch_size
             start = self.index_sets[self.batch_num]
-            end = min(len(db['x_'+set]), start+ self.batch_size)
+            end = min(len(db['x_'+self.set]), start+ self.batch_size)
             # x = db['x_'+self.set][start:start+self.batch_size]
             # y = db['y_'+self.set][start:start+self.batch_size]
             x = db['x_'+self.set][start:end]
