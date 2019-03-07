@@ -483,16 +483,26 @@ class DataGenerator2(keras.utils.Sequence):
 
 
 def predictionsToDataframe(model, x_val, y_val, encoder):
+    y_val = [k.decode('utf-8') for k in y_val]
+    y_val = encoder.transform(y_val)
+    y_val = np.array(y_val)
+    x_val = np.array(x_val)
+
     predictions = model.predict(x_val)
     one = []
     two = []
     three = []
+    four = []
+    five = []
     for p in predictions:
-        top = topClasses(p, encoder.classes_)
+        top = topClasses(p, encoder.classes_, n=5)
         one.append(top[0][0])
         two.append(top[1][0])
         three.append(top[2][0])
-        
+        four.append(top[3][0])
+        five.append(top[4][0])
+
+    print(encoder.inverse_transform(y_val))
     df = pd.DataFrame({'truth': [translateID(x) for x in encoder.inverse_transform(y_val)],
                       'one': one,
                       'two': two,
@@ -501,11 +511,13 @@ def predictionsToDataframe(model, x_val, y_val, encoder):
     return df
 #USAGE
 """
-h5db = h5py.File(h5file, 'r)
+h5db = h5py.File(h5file, 'r')
+x_val = np.array(h5db['x_val'])
 top3accuracies(model, h5db['x_val][:], h5db[y_val][:])
 """
-def top3accuracies(model, x_val, y_val, encoder):
+def top5accuracies(model, x_val, y_val, encoder):
     df = predictionsToDataframe(model, x_val, y_val, encoder)
+    
     acc1 = len(df[df.truth == df.one])/len(df)
 
 
@@ -514,6 +526,9 @@ def top3accuracies(model, x_val, y_val, encoder):
 
     acc3 = len(df[(df.truth == df.one) | (df.truth == df.two) | (df.truth == df.three) ]) / len(df)
 
-    return [acc1, acc2, acc3]
+    acc4 = len(df[(df.truth == df.one) | (df.truth == df.two) | (df.truth == df.three) |  (df.truth == df.four)]) / len(df)
+
+    acc5 = len(df[(df.truth == df.one) | (df.truth == df.two) | (df.truth == df.three) |  (df.truth == df.four) | (df.truth == df.five)]) / len(df)
+    return [acc1, acc2, acc3, acc4, acc5]
 
 
