@@ -339,19 +339,19 @@ class DataGenerator(keras.utils.Sequence):
             y.extend(y_aug)
 
         #TESTING FOR MULTIPROCESSING
-        # nan_check = np.isnan(x)
-        # x_new = []
-        # y_new = []
-        # for i in range(len(nan_check)):
-        #     if True in nan_check[i]:
-        #         print('NAN @ INDEX {0}'.format(i))
-        #         print('Index num: {0}'.format(idxs[i]))
-        #     else:
-        #         x_new.append(x[i])
-        #         y_new.append(y[i])
+        nan_check = np.isnan(x)
+        x_new = []
+        y_new = []
+        for i in range(len(nan_check)):
+            if True in nan_check[i]:
+                print('NAN @ INDEX {0}'.format(i))
+                print('Index num: {0}'.format(idxs[i]))
+            else:
+                x_new.append(x[i])
+                y_new.append(y[i])
         
-        # x = x_new
-        # y = y_new
+        x = x_new
+        y = y_new
 
     
         x = np.array(x)
@@ -374,3 +374,146 @@ class DataGenerator(keras.utils.Sequence):
         self.index_sets = [np.sort(s) for s in sets]
         
         self.batch_num = 0
+
+
+class DataGenerator2(keras.utils.Sequence):
+
+    def __init__(self, h5file, classes, batch_size=32, isValidation = False, shuffle=True, augmentations = []):
+        self.h5file = h5file
+        self.isValidation = isValidation
+
+        self.h5db = h5py.File(self.h5file, 'r')
+        if self.isValidation:
+            self.X = self.h5db['x_val']
+            self.Y = self.h5db['y_val']
+        else:
+            self.X = self.h5db['x_train']
+            self.Y = self.h5db['y_train']
+
+        self.data_length = len(self.X)
+        # with h5py.File(self.h5file, 'r') as db:
+        #     if self.isValidation:
+        #         self.data_length = len(db['x_val'])
+        #     else:
+        #         self.data_length = len(db['x_train'])
+        
+        self.classes = classes
+        self.encoder = LabelBinarizer()
+        self.encoder = self.encoder.fit(self.classes)
+
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.index_sets = []
+        self.batch_num = 0
+
+        self.augmentations = augmentations
+
+        self.on_epoch_end()
+
+    def __len__(self):
+        'Calculates how many steps in an epoch'
+        return int(np.floor(self.data_length / self.batch_size))
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        idxs = list(self.index_sets[self.batch_num])
+        # with h5py.File(self.h5file, 'r') as db:
+        #     if self.isValidation:
+        #         X = db['x_val']
+        #         Y = db['y_val']
+        #     else:
+        #         X = db['x_train']
+        #         Y = db['y_train']
+
+            
+        x = self.X[idxs]
+        y = self.Y[idxs]
+        #TESTING FOR MULTIPROCESSING
+        # for k in y:
+        #     try:
+        #         k.decode('utf-8')
+        #     except:
+        #         print(y)
+        
+        y = [k.decode('utf-8') for k in y]
+        
+        
+        #TODO
+        if len(self.augmentations) > 0:
+            x_aug, y_aug = augmentData(x, y, augments = self.augmentations)
+            x.extend(x_aug)
+            y.extend(y_aug)
+
+        #TESTING FOR MULTIPROCESSING
+        nan_check = np.isnan(x)
+        x_new = []
+        y_new = []
+        for i in range(len(nan_check)):
+            if True in nan_check[i]:
+                print('NAN @ INDEX {0}'.format(i))
+                print('Index num: {0}'.format(idxs[i]))
+            else:
+                x_new.append(x[i])
+                y_new.append(y[i])
+        
+        x = x_new
+        y = y_new
+
+    
+        x = np.array(x)
+        y = self.encoder.transform(y) 
+        y = np.array(y)
+        
+
+        self.batch_num +=1
+
+        return x,y
+        
+
+    def on_epoch_end(self):
+        if self.shuffle:
+            idxs = np.random.permutation(self.data_length)
+        else:
+            idxs = np.arange(0, self.data_length)
+        
+        sets = utils.chunks(idxs, self.batch_size)
+        self.index_sets = [np.sort(s) for s in sets]
+        
+        self.batch_num = 0
+
+
+def predictionsToDataframe(model, x_val, y_val, encoder):
+    predictions = model.predict(x_val)
+    one = []
+    two = []
+    three = []
+    for p in predictions:
+        top = topClasses(p, encoder.classes_)
+        one.append(top[0][0])
+        two.append(top[1][0])
+        three.append(top[2][0])
+        
+    df = pd.DataFrame({'truth': [translateID(x) for x in encoder.inverse_transform(y_val)],
+                      'one': one,
+                      'two': two,
+                      'three': three}) 
+
+    return df
+#USAGE
+"""
+h5db = h5py.File(h5file, 'r)
+top3accuracies(model, h5db['x_val][:], h5db[y_val][:])
+"""
+def top3accuracies(model, x_val, y_val, encoder):
+    df = predictionsToDataframe(model, x_val, y_val, encoder)
+    acc1 = len(df[df.truth == df.one])/len(df)
+
+
+    acc2 = len(df[(df.truth == df.one) | (df.truth == df.two)])/len(df)
+
+
+    acc3 = len(df[(df.truth == df.one) | (df.truth == df.two) | (df.truth == df.three) ]) / len(df)
+
+    return [acc1, acc2, acc3]
+
+
