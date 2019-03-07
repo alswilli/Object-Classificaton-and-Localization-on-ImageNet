@@ -506,7 +506,9 @@ def predictionsToDataframe(model, x_val, y_val, encoder):
     df = pd.DataFrame({'truth': [translateID(x) for x in encoder.inverse_transform(y_val)],
                       'one': one,
                       'two': two,
-                      'three': three}) 
+                      'three': three,
+                      'four': four,
+                      'five': five}) 
 
     return df
 #USAGE
