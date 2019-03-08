@@ -4,6 +4,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
 import keras
 from keras.preprocessing import image
+from PIL import Image
+
 import h5py
 import numpy as np
 from imgaug import augmenters as iaa
@@ -138,12 +140,14 @@ def parseImages(folders, filename, img_width=224, img_height=224):
         for imageFile in imageFiles:
             imagePath = os.path.join(trainPath, folder, imageFile)
             if os.path.exists(imagePath):
-                img = image.load_img(imagePath, target_size=(img_width, img_height))
-                img = image.img_to_array(img)/255.
-                if np.isnan(img).any():
-                    print("ISSUE: Found NaN")
-                x_train.append(img)
-                y_train.append(folder)
+                with Image.open(imagePath) as x:
+                    width, height = x.size
+                    if width >= img_width and height >= img_height:
+                        img = image.load_img(imagePath, target_size=(img_width, img_height))
+                        img = image.img_to_array(img)/255.
+
+                        x_train.append(img)
+                        y_train.append(folder)
         imgCount += len(x_train)
         print("Found {0} images. ".format(len(x_train)))
         df_train = pd.DataFrame({'x': x_train, 'y': y_train})
@@ -376,110 +380,6 @@ class DataGenerator(keras.utils.Sequence):
         self.batch_num = 0
 
 
-class DataGenerator2(keras.utils.Sequence):
-
-    def __init__(self, h5file, classes, batch_size=32, isValidation = False, shuffle=True, augmentations = []):
-        self.h5file = h5file
-        self.isValidation = isValidation
-
-        self.h5db = h5py.File(self.h5file, 'r')
-        if self.isValidation:
-            self.X = self.h5db['x_val']
-            self.Y = self.h5db['y_val']
-        else:
-            self.X = self.h5db['x_train']
-            self.Y = self.h5db['y_train']
-
-        self.data_length = len(self.X)
-        # with h5py.File(self.h5file, 'r') as db:
-        #     if self.isValidation:
-        #         self.data_length = len(db['x_val'])
-        #     else:
-        #         self.data_length = len(db['x_train'])
-        
-        self.classes = classes
-        self.encoder = LabelBinarizer()
-        self.encoder = self.encoder.fit(self.classes)
-
-        self.batch_size = batch_size
-        self.shuffle = shuffle
-        self.index_sets = []
-        self.batch_num = 0
-
-        self.augmentations = augmentations
-
-        self.on_epoch_end()
-
-    def __len__(self):
-        'Calculates how many steps in an epoch'
-        return int(np.floor(self.data_length / self.batch_size))
-
-    def __getitem__(self, index):
-        'Generate one batch of data'
-        idxs = list(self.index_sets[self.batch_num])
-        # with h5py.File(self.h5file, 'r') as db:
-        #     if self.isValidation:
-        #         X = db['x_val']
-        #         Y = db['y_val']
-        #     else:
-        #         X = db['x_train']
-        #         Y = db['y_train']
-
-            
-        x = self.X[idxs]
-        y = self.Y[idxs]
-        #TESTING FOR MULTIPROCESSING
-        # for k in y:
-        #     try:
-        #         k.decode('utf-8')
-        #     except:
-        #         print(y)
-        
-        y = [k.decode('utf-8') for k in y]
-        
-        
-        #TODO
-        if len(self.augmentations) > 0:
-            x_aug, y_aug = augmentData(x, y, augments = self.augmentations)
-            x.extend(x_aug)
-            y.extend(y_aug)
-
-        #TESTING FOR MULTIPROCESSING
-        nan_check = np.isnan(x)
-        x_new = []
-        y_new = []
-        for i in range(len(nan_check)):
-            if True in nan_check[i]:
-                print('NAN @ INDEX {0}'.format(i))
-                print('Index num: {0}'.format(idxs[i]))
-            else:
-                x_new.append(x[i])
-                y_new.append(y[i])
-        
-        x = x_new
-        y = y_new
-
-    
-        x = np.array(x)
-        y = self.encoder.transform(y) 
-        y = np.array(y)
-        
-
-        self.batch_num +=1
-
-        return x,y
-        
-
-    def on_epoch_end(self):
-        if self.shuffle:
-            idxs = np.random.permutation(self.data_length)
-        else:
-            idxs = np.arange(0, self.data_length)
-        
-        sets = utils.chunks(idxs, self.batch_size)
-        self.index_sets = [np.sort(s) for s in sets]
-        
-        self.batch_num = 0
 
 class DataGenerator3(keras.utils.Sequence):
 
@@ -517,22 +417,16 @@ class DataGenerator3(keras.utils.Sequence):
         # idxs = list(self.index_sets[self.batch_num])
         with h5py.File(self.h5file, 'r') as db:
             
-            # start = self.batch_num * self.batch_size
-            start = self.index_sets[self.batch_num]
-            end = min(len(db['x_'+self.set]), start+ self.batch_size)
+            start = self.batch_num * self.batch_size
+            # start = self.index_sets[self.batch_num]
+            end = min(self.data_length, start+ self.batch_size)
+
+            # print("Start: {0}, End: {1}, : Range: {2}".format(start, end, self.data_length))
             # x = db['x_'+self.set][start:start+self.batch_size]
             # y = db['y_'+self.set][start:start+self.batch_size]
             x = db['x_'+self.set][start:end]
             y = db['y_'+self.set][start:end]
             
-            
-        # print(len(y))
-        #TESTING FOR MULTIPROCESSING
-        # for k in y:
-        #     try:
-        #         k.decode('utf-8')
-        #     except:
-        #         print(y)
         
         y = [k.decode('utf-8') for k in y]
         
@@ -570,15 +464,15 @@ class DataGenerator3(keras.utils.Sequence):
         
 
     def on_epoch_end(self):
-        idxs = [k*self.batch_size for k in range(0, len(self))]
-        np.random.shuffle(idxs)
+        # idxs = [k*self.batch_size for k in range(0, len(self)+1)]
+        # np.random.shuffle(idxs)
         # if self.shuffle:
         #     idxs = np.random.permutation(self.data_length)
         # else:
         #     idxs = np.arange(0, self.data_length)
         
         # sets = utils.chunks(idxs, self.batch_size)
-        self.index_sets = idxs
+        # self.index_sets = idxs
         
         self.batch_num = 0
 
