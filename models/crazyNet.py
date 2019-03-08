@@ -157,32 +157,49 @@ def build_model3(n_classes, img_width=224, img_height=224, channels=3):
     l2_reg = 0.0
     x = Input(shape=input_shape)
     
-    layer_sizes = [48, 64, 64, 96, 96, 48, 48]
+#    layer_sizes = [48, 64, 64, 80, 80, 96, 96, 112, 112, 128, 128, 128, 128, 112, 112, 96, 96, 80, 80, 64, 64, 48, 48]
+    layer_sizes = [48, 64, 64, 48, 48]
 
     conv1 = Conv2D(32, (5,5), padding="same",  
         kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv1')(x)
     conv1 = BatchNormalization(axis=3, momentum=0.99, name='bn1')(conv1)
     conv1 = ELU(name='elu')(conv1)
+#    drop1 = Dropout(0.1)(conv1)
     pool1 = MaxPooling2D(name='pool1')(conv1)
+    
 
     i = 2
     last_pool = pool1
     for size in layer_sizes:
-        conv = Conv2D(48, (3, 3), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv{0}'.format(i))(last_pool)
+        conv = Conv2D(size, (3, 3), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv{0}'.format(i))(last_pool)
+        
         conv = BatchNormalization(axis=3, momentum=0.99, name='bn{0}'.format(i))(conv)
+        
         conv = ELU(name='elu{0}'.format(i))(conv)
-        if i%3==0:
-            conv = MaxPooling2D(pool_size=(2, 2), name='pool{0}'.format(i))(conv)
+        
+        lastPool = MaxPooling2D(pool_size=(2, 2), name='pool{0}'.format(i))(conv)
+        
+#        if(i%3 == 0):
+#            conv = Dropout(0.25)(conv)
+        
+#        if i%1==0:
+#            if i == 5:
+#                
+#            last_pool = MaxPooling2D(pool_size=(2, 2), name='pool{0}'.format(i))(conv)
+            
         i+=1
 
 
-    conv_last = Conv2D(32, (3, 3), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv_last')(conv)
+    conv_last = Conv2D(32, (3, 3), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv_last')(lastPool)
     conv_last = BatchNormalization(axis=3, momentum=0.99, name='bn_last')(conv_last)
     conv_last = ELU(name='elu_last')(conv_last)
     
     flat = Flatten()(conv_last)
-    dense = Dense(256,  activation='relu')(flat)
-    drop = Dropout(0.1)(dense)
+    dense = Dense(1024,  activation='relu')(flat)
+    drop = Dropout(0.25)(dense)
+    
+    dense = Dense(256,  activation='relu')(drop)
+    drop = Dropout(0.25)(dense)
 
     output = Dense(n_classes, activation='softmax')(drop)
     # classes_softmax = Activation('softmax', name='classes_softmax')(classes_concat)
