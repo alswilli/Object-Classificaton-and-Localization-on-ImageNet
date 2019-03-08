@@ -269,33 +269,55 @@ def init():
     print("..done")
 
 
+# def shuffleH5(filepath, inplace=False):
+    
+#     outpath = os.path.join(h5Path, 'shuffle.h5')
+#     # if os.path.exists(outpath):
+#     #     os.remove(outpath)
+#     # os.replace(filepath, outpath)
+#     data = h5py.File(filepath, 'r+')
+#     out =  h5py.File(outpath, 'w')
+
+#     indexes = np.arange(data['x_train'].shape[0])
+#     np.random.shuffle(indexes)
+#     for key in data.keys():
+#         if key in ['x_train', 'y_train']:
+#             feed = np.take(data[key], indexes, axis=0)
+#             out.create_dataset(key, data=feed)
+#         else:
+#             out.create_dataset(key, data=data[key])
+    
+#     out.close()
+#     data.close()
+    
+    
+#     return filepath
+
+
 def shuffleH5(filepath, inplace=False):
     
     outpath = os.path.join(h5Path, 'shuffle.h5')
     # if os.path.exists(outpath):
     #     os.remove(outpath)
     # os.replace(filepath, outpath)
+    data = h5py.File(filepath, 'r+')
+    # out =  h5py.File(outpath, 'w')
 
-    with h5py.File(filepath, 'r') as data:
-
-        with h5py.File(outpath, 'w') as out:
-            indexes = np.arange(data['x_train'].shape[0])
-            np.random.shuffle(indexes)
-            for key in data.keys():
-                if key in ['x_train', 'y_train']:
-                    feed = np.take(data[key], indexes, axis=0)
-                    out.create_dataset(key, data=feed)
-                else:
-                    out.create_dataset(key, data=data[key])
+    indexes = np.arange(data['x_train'].shape[0])
+    np.random.shuffle(indexes)
+    for key in data.keys():
+        if key in ['x_train', 'y_train']:
+            d = data[key]
+            feed = np.take(data[key], indexes, axis=0)
+            d[...] = feed
+        
+            
+    
+    # out.close()
+    data.close()
     
     
-
-    # if inplace:
-    #     os.remove(filepath)
-    #     os.rename(outpath, filepath)
-    #     return filepath
-    
-    return outpath
+    return filepath
 
 class DataGenerator(keras.utils.Sequence):
 
