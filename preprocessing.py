@@ -184,17 +184,21 @@ def parseImages(folders, filename, img_width=224, img_height=224):
     print("Wrote {0} images to {1}".format(imgCount, path))
 
 """no going to work. need to shuffle all datasets to the same index. """
-def shuffleH5(filename):
-    path = os.path.join(h5Path, filename)
-    datasets = ['x_train', 'y_train', 'x_val', 'y_val']
-    with h5py.File(path, 'r+') as h5f:
-        for dataset in datasets:
-            print('Shuffling dataset: {0}'.format(dataset))
-            t1 = time.time()
-            random.shuffle(h5f[dataset])
-            t2 = time.time()
-            print('Time to shuffle {:.3f} seconds'.format(str(t2-t1)))
+def shuffleH5(filename, outputname):
+    data = h5py.File(os.path.join(h5Path, filename), 'r')
 
+    with h5py.File(os.path.join(h5Path, outputname), 'w') as out:
+        indexes = np.arange(data['x_train'].shape[0])
+        np.random.shuffle(indexes)
+        for key in data.keys():
+            if key in ['x_train', 'y_train']:
+                feed = np.take(data[key], indexes, axis=0)
+                out.create_dataset(key, data=feed)
+            else:
+                out.create_dataset(key, data=data[key])
+    
+    data.close()
+            
 """
 Loads a single h5 file, from the default h5 output path. 
 
