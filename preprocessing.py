@@ -283,17 +283,13 @@ class DataGenerator(keras.utils.Sequence):
         self.h5file = h5file
         self.isValidation = isValidation
 
-        # if self.isValidation:
-        #     self.X = self.h5db['x_val']
-        #     self.Y = self.h5db['y_val']
-        # else:
-        #     self.X = self.h5db['x_train']
-        #     self.Y = self.h5db['y_train']
+        self.set = 'train'
+        if self.isValidation:
+            self.set = 'val'
         with h5py.File(self.h5file, 'r') as db:
-            if self.isValidation:
-                self.data_length = len(db['x_val'])
-            else:
-                self.data_length = len(db['x_train'])
+            self.data_length = len(db['x_'+ self.set])
+            
+               
         
         self.classes = classes
         self.encoder = LabelBinarizer()
@@ -316,16 +312,9 @@ class DataGenerator(keras.utils.Sequence):
         'Generate one batch of data'
         idxs = list(self.index_sets[self.batch_num])
         with h5py.File(self.h5file, 'r') as db:
-            if self.isValidation:
-                X = db['x_val']
-                Y = db['y_val']
-            else:
-                X = db['x_train']
-                Y = db['y_train']
-
             
-            x = X[idxs]
-            y = Y[idxs]
+            x = db['x_'+self.set][idxs]
+            y = db['y_'+self.set][idxs]
         #TESTING FOR MULTIPROCESSING
         # for k in y:
         #     try:
