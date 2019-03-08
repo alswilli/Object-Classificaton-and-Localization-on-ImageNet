@@ -512,8 +512,8 @@ class DataGenerator3(keras.utils.Sequence):
         
         # sets = utils.chunks(idxs, self.batch_size)
         # self.index_sets = idxs
-        
-        self.h5file = shuffleH5(self.baseh5file, inplace=True)
+        if self.set == 'train':
+            self.h5file = shuffleH5(self.baseh5file, inplace=True)
         self.batch_num = 0
 
 
