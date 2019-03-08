@@ -183,21 +183,8 @@ def parseImages(folders, filename, img_width=224, img_height=224):
     
     print("Wrote {0} images to {1}".format(imgCount, path))
 
-"""no going to work. need to shuffle all datasets to the same index. """
-def shuffleH5(filename, outputname):
-    data = h5py.File(os.path.join(h5Path, filename), 'r')
 
-    with h5py.File(os.path.join(h5Path, outputname), 'w') as out:
-        indexes = np.arange(data['x_train'].shape[0])
-        np.random.shuffle(indexes)
-        for key in data.keys():
-            if key in ['x_train', 'y_train']:
-                feed = np.take(data[key], indexes, axis=0)
-                out.create_dataset(key, data=feed)
-            else:
-                out.create_dataset(key, data=data[key])
-    
-    data.close()
+
             
 """
 Loads a single h5 file, from the default h5 output path. 
@@ -280,6 +267,35 @@ def init():
     print("Checking to make sure output directories are created..")
     make_output_dirs([outputModelPath, outputFigPath, h5Path])
     print("..done")
+
+
+def shuffleH5(filepath, inplace=False):
+    
+    outpath = os.path.join(h5Path, 'shuffle.h5')
+    # if os.path.exists(outpath):
+    #     os.remove(outpath)
+    # os.replace(filepath, outpath)
+
+    with h5py.File(filepath, 'r') as data:
+
+        with h5py.File(outpath, 'w') as out:
+            indexes = np.arange(data['x_train'].shape[0])
+            np.random.shuffle(indexes)
+            for key in data.keys():
+                if key in ['x_train', 'y_train']:
+                    feed = np.take(data[key], indexes, axis=0)
+                    out.create_dataset(key, data=feed)
+                else:
+                    out.create_dataset(key, data=data[key])
+    
+    
+
+    # if inplace:
+    #     os.remove(filepath)
+    #     os.rename(outpath, filepath)
+    #     return filepath
+    
+    return outpath
 
 class DataGenerator(keras.utils.Sequence):
 
@@ -377,6 +393,7 @@ class DataGenerator(keras.utils.Sequence):
 class DataGenerator3(keras.utils.Sequence):
 
     def __init__(self, h5file, classes, batch_size=32, isValidation = False, shuffle=True, augmentations = []):
+        self.baseh5file = h5file
         self.h5file = h5file
         self.isValidation = isValidation
         self.set = 'train'
@@ -408,6 +425,11 @@ class DataGenerator3(keras.utils.Sequence):
     def __getitem__(self, index):
         'Generate one batch of data'
         # idxs = list(self.index_sets[self.batch_num])
+        i = 0
+        while not(os.path.exists(self.h5file)):
+            i+=1
+            if i%10 == 0:
+                print('still not there')
         with h5py.File(self.h5file, 'r') as db:
             
             start = self.batch_num * self.batch_size
@@ -417,6 +439,8 @@ class DataGenerator3(keras.utils.Sequence):
             # print("Start: {0}, End: {1}, : Range: {2}".format(start, end, self.data_length))
             # x = db['x_'+self.set][start:start+self.batch_size]
             # y = db['y_'+self.set][start:start+self.batch_size]
+
+            print([k for k in db.keys()])
             x = db['x_'+self.set][start:end]
             y = db['y_'+self.set][start:end]
             
@@ -467,6 +491,7 @@ class DataGenerator3(keras.utils.Sequence):
         # sets = utils.chunks(idxs, self.batch_size)
         # self.index_sets = idxs
         
+        self.h5file = shuffleH5(self.baseh5file, inplace=True)
         self.batch_num = 0
 
 
