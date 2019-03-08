@@ -447,11 +447,8 @@ class DataGenerator3(keras.utils.Sequence):
     def __getitem__(self, index):
         'Generate one batch of data'
         # idxs = list(self.index_sets[self.batch_num])
-        i = 0
-        while not(os.path.exists(self.h5file)):
-            i+=1
-            if i%10 == 0:
-                print('still not there')
+
+
         with h5py.File(self.h5file, 'r') as db:
             
             start = self.batch_num * self.batch_size
@@ -462,7 +459,6 @@ class DataGenerator3(keras.utils.Sequence):
             # x = db['x_'+self.set][start:start+self.batch_size]
             # y = db['y_'+self.set][start:start+self.batch_size]
 
-            print([k for k in db.keys()])
             x = db['x_'+self.set][start:end]
             y = db['y_'+self.set][start:end]
             
