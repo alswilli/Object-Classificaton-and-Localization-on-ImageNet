@@ -454,7 +454,7 @@ class DataGenerator(keras.utils.Sequence):
 class DataGenerator3(keras.utils.Sequence):
 
     def __init__(self, h5file, classes, batch_size=32, isValidation = False, 
-        shuffle=True, augmentations = [], augmentReplace = True, augment_pct=0.25):
+        shuffle=False, augmentations = [], augmentReplace = True, augment_pct=0.25):
         self.baseh5file = h5file
         self.h5file = h5file
         self.isValidation = isValidation
