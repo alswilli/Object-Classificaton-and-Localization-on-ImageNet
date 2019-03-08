@@ -236,18 +236,53 @@ def getClassLabels():
 """
 Augments data and returns x_aug, y_aug
 """
-def augmentData(x, y, augments = [], p=1.0):
+def augmentData(x, y, augments = [], p=1.0, replace=False):
+    x_new, y_new = np.copy(x), np.copy(y)
+    
     x_aug, y_aug = [], []
-    for i in range(0, len(x)):
+    
+    for i in range(0, len(x)):   
         r = np.random.uniform()
         if r <= p:
             img = x[i]
             for aug in augments:
+
                 augmented = aug.augment_image(img)
-                x_aug.append(augmented)
-                y_aug.append(y[i])
+                if replace:
+                    x_new[i] = augmented
+                else:
+                    x_aug.append(augmented)
+                    y_aug.append(y[i])
+        
+        
+    if not replace:
+        x_new = np.concatenate((x_new, x_aug))
+        y_new = np.concatenate((y_new, y_aug))
     
-    return x_aug, y_aug
+    return x_new, y_new
+
+def augmentData2(x, y, augments = [], p=1.0, replace=False):
+    x_old, y_old = np.copy(x), np.copy(y)
+    x_aug, y_aug = [], []
+    idxs = [i for i in range(0, len(x))]
+    np.random.shuffle(idxs)
+    idxs = idxs[0:int(p*len(x))]
+    for idx in idxs:
+        for aug in augments:
+            augmented = aug.augment_image(x[idx])
+            if not replace:
+                x_aug.append(augmented)
+                y_aug.append(y[idx])
+            else:
+                x_old[idx] = augmented
+            # x.append(x[idx])
+            # y.append(y[idx])
+    if not replace:
+        x_old = np.concatenate((x_old, x_aug))
+        y_old = np.concatenate((y_old, y_aug))
+        return x_old, y_old
+    
+    return x_old, y_old
 
 def displayImage(x):
     plt.imshow(x)
@@ -419,7 +454,7 @@ class DataGenerator(keras.utils.Sequence):
 class DataGenerator3(keras.utils.Sequence):
 
     def __init__(self, h5file, classes, batch_size=32, isValidation = False, 
-        shuffle=True, augmentations = [], augment_pct=0.25):
+        shuffle=True, augmentations = [], augmentReplace = True, augment_pct=0.25):
         self.baseh5file = h5file
         self.h5file = h5file
         self.isValidation = isValidation
@@ -442,6 +477,7 @@ class DataGenerator3(keras.utils.Sequence):
         self.batch_num = 0
 
         self.augmentations = augmentations
+        self.augmentReplace = augmentReplace
         self.augment_pct = augment_pct
         self.on_epoch_end()
 
@@ -473,9 +509,12 @@ class DataGenerator3(keras.utils.Sequence):
         
         #TODO
         if len(self.augmentations) > 0:
-            x_aug, y_aug = augmentData(x, y, augments = self.augmentations, p = self.augment_pct)
-            x.extend(x_aug)
-            y.extend(y_aug)
+            if not self.augmentReplace:
+                x_aug, y_aug = augmentData(x, y, augments = self.augmentations, p = self.augment_pct)
+                x.extend(x_aug)
+                y.extend(y_aug)
+            else:
+                x, y = augmentData(x, y, augments = self.augmentations, p = self.augment_pct, replace = True)
 
         #TESTING FOR MULTIPROCESSING
         nan_check = np.isnan(x)
