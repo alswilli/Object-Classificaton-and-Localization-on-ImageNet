@@ -1,4 +1,5 @@
 import os
+
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
@@ -235,14 +236,16 @@ def getClassLabels():
 """
 Augments data and returns x_aug, y_aug
 """
-def augmentData(x, y, augments = []):
+def augmentData(x, y, augments = [], p=1.0):
     x_aug, y_aug = [], []
     for i in range(0, len(x)):
-        img = x[i]
-        for aug in augments:
-            augmented = aug.augment_image(img)
-            x_aug.append(augmented)
-            y_aug.append(y[i])
+        r = np.random.uniform()
+        if r <= p:
+            img = x[i]
+            for aug in augments:
+                augmented = aug.augment_image(img)
+                x_aug.append(augmented)
+                y_aug.append(y[i])
     
     return x_aug, y_aug
 
@@ -321,10 +324,10 @@ def shuffleH5(filepath, inplace=False):
 
 class DataGenerator(keras.utils.Sequence):
 
-    def __init__(self, h5file, classes, batch_size=32, isValidation = False, shuffle=True, augmentations = []):
+    def __init__(self, h5file, classes, batch_size=32, isValidation = False, shuffle=False, augmentations = [], augment_pct=0.25):
         self.h5file = h5file
         self.isValidation = isValidation
-
+        
         self.set = 'train'
         if self.isValidation:
             self.set = 'val'
@@ -343,6 +346,7 @@ class DataGenerator(keras.utils.Sequence):
         self.batch_num = 0
 
         self.augmentations = augmentations
+        self.augment_pct = augment_pct
 
         self.on_epoch_end()
 
@@ -369,7 +373,7 @@ class DataGenerator(keras.utils.Sequence):
         
         #TODO
         if len(self.augmentations) > 0:
-            x_aug, y_aug = augmentData(x, y, augments = self.augmentations)
+            x_aug, y_aug = augmentData(x, y, augments = self.augmentations, p=self.augment_pct)
             x.extend(x_aug)
             y.extend(y_aug)
 
@@ -414,7 +418,8 @@ class DataGenerator(keras.utils.Sequence):
 
 class DataGenerator3(keras.utils.Sequence):
 
-    def __init__(self, h5file, classes, batch_size=32, isValidation = False, shuffle=True, augmentations = []):
+    def __init__(self, h5file, classes, batch_size=32, isValidation = False, 
+        shuffle=True, augmentations = [], augment_pct=0.25):
         self.baseh5file = h5file
         self.h5file = h5file
         self.isValidation = isValidation
@@ -437,7 +442,7 @@ class DataGenerator3(keras.utils.Sequence):
         self.batch_num = 0
 
         self.augmentations = augmentations
-
+        self.augment_pct = augment_pct
         self.on_epoch_end()
 
     def __len__(self):
@@ -464,11 +469,11 @@ class DataGenerator3(keras.utils.Sequence):
             
         
         y = [k.decode('utf-8') for k in y]
-        
+        x = list(x)
         
         #TODO
         if len(self.augmentations) > 0:
-            x_aug, y_aug = augmentData(x, y, augments = self.augmentations)
+            x_aug, y_aug = augmentData(x, y, augments = self.augmentations, p = self.augment_pct)
             x.extend(x_aug)
             y.extend(y_aug)
 
@@ -508,8 +513,11 @@ class DataGenerator3(keras.utils.Sequence):
         
         # sets = utils.chunks(idxs, self.batch_size)
         # self.index_sets = idxs
-        if self.set == 'train':
+
+        
+        if self.set == 'train' and self.batch_num==0 and self.shuffle:
             self.h5file = shuffleH5(self.baseh5file, inplace=True)
+        
         self.batch_num = 0
 
 
