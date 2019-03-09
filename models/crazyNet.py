@@ -164,8 +164,8 @@ def build_model3(n_classes, img_width=224, img_height=224, channels=3):
         kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv1')(x)
     conv1 = BatchNormalization(axis=3, momentum=0.99, name='bn1')(conv1)
     conv1 = ELU(name='elu')(conv1)
-#    drop1 = Dropout(0.1)(conv1)
-    pool1 = MaxPooling2D(name='pool1')(conv1)
+    drop1 = Dropout(0.05)(conv1)
+    pool1 = MaxPooling2D(name='pool1')(drop1)
     
 
     i = 2
@@ -177,7 +177,7 @@ def build_model3(n_classes, img_width=224, img_height=224, channels=3):
         
         conv = ELU(name='elu{0}'.format(i))(conv)
         
-        lastPool = MaxPooling2D(pool_size=(2, 2), name='pool{0}'.format(i))(conv)
+        last_pool = MaxPooling2D(pool_size=(2, 2), name='pool{0}'.format(i))(conv)
         
 #        if(i%3 == 0):
 #            conv = Dropout(0.25)(conv)
@@ -190,15 +190,24 @@ def build_model3(n_classes, img_width=224, img_height=224, channels=3):
         i+=1
 
 
-    conv_last = Conv2D(32, (3, 3), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv_last')(lastPool)
+    conv_last = Conv2D(32, (3, 3), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv_last')(last_pool)
     conv_last = BatchNormalization(axis=3, momentum=0.99, name='bn_last')(conv_last)
     conv_last = ELU(name='elu_last')(conv_last)
     
     flat = Flatten()(conv_last)
-    dense = Dense(1024,  activation='relu')(flat)
-    drop = Dropout(0.25)(dense)
+    dense = Dense(128,  activation='relu')(flat)
+    drop = Dropout(0.15)(dense)
+
+    dense = Dense(256,  activation='relu')(drop)
+    drop = Dropout(0.15)(dense)
+
+    dense = Dense(512,  activation='relu')(drop)
+    drop = Dropout(0.15)(dense)
     
     dense = Dense(256,  activation='relu')(drop)
+    drop = Dropout(0.25)(dense)
+
+    dense = Dense(128,  activation='relu')(drop)
     drop = Dropout(0.25)(dense)
 
     output = Dense(n_classes, activation='softmax')(drop)
