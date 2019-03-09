@@ -245,6 +245,7 @@ def augmentData(x, y, augments = [], p=1.0, replace=False):
         r = np.random.uniform()
         if r <= p:
             img = x[i]
+            np.random.shuffle(augments)
             for aug in augments:
 
                 augmented = aug.augment_image(img)
@@ -268,6 +269,7 @@ def augmentData2(x, y, augments = [], p=1.0, replace=False):
     np.random.shuffle(idxs)
     idxs = idxs[0:int(p*len(x))]
     for idx in idxs:
+        np.shuffle(augments)
         for aug in augments:
             augmented = aug.augment_image(x[idx])
             if not replace:
@@ -302,44 +304,19 @@ def topClasses(prediction, classes, n=3):
 
 
 def init():
-    print("Checking to make sure output directories are created..")
+    print("Checking to make sure output directories are created..", end="", flush=True)
     make_output_dirs([outputModelPath, outputFigPath, h5Path])
     print("..done")
 
 
-# def shuffleH5(filepath, inplace=False):
-    
-#     outpath = os.path.join(h5Path, 'shuffle.h5')
-#     # if os.path.exists(outpath):
-#     #     os.remove(outpath)
-#     # os.replace(filepath, outpath)
-#     data = h5py.File(filepath, 'r+')
-#     out =  h5py.File(outpath, 'w')
-
-#     indexes = np.arange(data['x_train'].shape[0])
-#     np.random.shuffle(indexes)
-#     for key in data.keys():
-#         if key in ['x_train', 'y_train']:
-#             feed = np.take(data[key], indexes, axis=0)
-#             out.create_dataset(key, data=feed)
-#         else:
-#             out.create_dataset(key, data=data[key])
-    
-#     out.close()
-#     data.close()
-    
-    
-#     return filepath
 
 
 def shuffleH5(filepath, inplace=False):
     
     outpath = os.path.join(h5Path, 'shuffle.h5')
-    # if os.path.exists(outpath):
-    #     os.remove(outpath)
-    # os.replace(filepath, outpath)
+
     data = h5py.File(filepath, 'r+')
-    # out =  h5py.File(outpath, 'w')
+
 
     indexes = np.arange(data['x_train'].shape[0])
     np.random.shuffle(indexes)
@@ -349,9 +326,6 @@ def shuffleH5(filepath, inplace=False):
             feed = np.take(data[key], indexes, axis=0)
             d[...] = feed
         
-            
-    
-    # out.close()
     data.close()
     
     
@@ -581,7 +555,7 @@ def predictionsToDataframe(model, x_val, y_val, encoder):
         four.append(top[3][0])
         five.append(top[4][0])
 
-    print(encoder.inverse_transform(y_val))
+    # print(encoder.inverse_transform(y_val))
     df = pd.DataFrame({'truth': [translateID(x) for x in encoder.inverse_transform(y_val)],
                       'one': one,
                       'two': two,
@@ -590,6 +564,20 @@ def predictionsToDataframe(model, x_val, y_val, encoder):
                       'five': five}) 
 
     return df
+
+def perClassAccuracy(model, x_val, y_val, encoder):
+    df = predictionsToDataframe(model, x_val,  y_val, encoder)
+    labels = df.truth.unique()
+    accs = [accuracies(df[df.truth == label]) for label in labels]
+
+    acc_df = pd.DataFrame({'label': labels, 'accuracies': accs})
+    acc_df[['top-1', 'top-2', 'top-3', 'top-4', 'top-5']] = pd.DataFrame(acc_df['accuracies'].values.tolist())
+    acc_df = acc_df.drop('accuracies', 1)
+    acc_df = acc_df.sort_values(by=['top-1'])
+
+    return acc_df
+
+
 #USAGE
 """
 h5db = h5py.File(h5file, 'r')
@@ -612,4 +600,18 @@ def top5accuracies(model, x_val, y_val, encoder):
     acc5 = len(df[(df.truth == df.one) | (df.truth == df.two) | (df.truth == df.three) |  (df.truth == df.four) | (df.truth == df.five)]) / len(df)
     return [acc1, acc2, acc3, acc4, acc5]
 
+def accuracies(df):
+    acc1 = len(df[df.truth == df.one])/len(df)
+
+
+    acc2 = len(df[(df.truth == df.one) | (df.truth == df.two)])/len(df)
+
+
+    acc3 = len(df[(df.truth == df.one) | (df.truth == df.two) | (df.truth == df.three) ]) / len(df)
+
+    acc4 = len(df[(df.truth == df.one) | (df.truth == df.two) | (df.truth == df.three) |  (df.truth == df.four)]) / len(df)
+
+    acc5 = len(df[(df.truth == df.one) | (df.truth == df.two) | (df.truth == df.three) |  (df.truth == df.four) | (df.truth == df.five)]) / len(df)
+    
+    return [acc1, acc2, acc3, acc4, acc5]
 
