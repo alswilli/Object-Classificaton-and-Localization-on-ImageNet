@@ -1,6 +1,6 @@
 from keras.models import Model
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D
+from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D
 from keras.layers import Activation, Dropout, Flatten, Dense, Reshape, BatchNormalization, ELU, Reshape, Concatenate, Activation, Input, Lambda
 from keras.regularizers import l2
 from keras import backend as K
@@ -210,7 +210,8 @@ def build_model3(n_classes, img_width=224, img_height=224, channels=3):
     dense = Dense(128,  activation='relu')(drop)
     drop = Dropout(0.25)(dense)
 
-    output = Dense(n_classes, activation='softmax')(drop)
+    pool = GlobalAveragePooling2D( )(drop)
+    output = Dense(n_classes, activation='softmax')(pool)
     # classes_softmax = Activation('softmax', name='classes_softmax')(classes_concat)
     
     model = Model(inputs=x, outputs=output)
