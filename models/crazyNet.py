@@ -208,9 +208,9 @@ def build_model3(n_classes, img_width=224, img_height=224, channels=3):
     drop = Dropout(0.25)(dense)
 
     dense = Dense(128,  activation='relu')(drop)
-    drop = Dropout(0.25)(dense)
+    # drop = Dropout(0.25)(dense)
 
-    pool = GlobalAveragePooling2D( )(drop)
+    pool = GlobalAveragePooling2D( )(dense)
     output = Dense(n_classes, activation='softmax')(pool)
     # classes_softmax = Activation('softmax', name='classes_softmax')(classes_concat)
     
