@@ -11,14 +11,17 @@ import h5py
 import numpy as np
 from imgaug import augmenters as iaa
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import random
 import time
 import utils
 
+import pandas_ml as pml
+
 dataPath = 'RealImageNet/ImageNetSubsample/Data/CLS-LOC'
 trainPath = os.path.join(dataPath, 'train')
 baseModelName = "model-{0}-{1}-{2}"
-
+trainhistory = os.path.join('output', 'trainhistory')
 outputModelPath = os.path.join('output','saved-models')
 outputFigPath = os.path.join('output', 'figs')
 h5Path = os.path.join('output', 'image-h5')
@@ -289,6 +292,17 @@ def augmentData2(x, y, augments = [], p=1.0, replace=False):
 def displayImage(x):
     plt.imshow(x)
 
+'coords in format: (xmin, xmax, ymin, ymax)'
+def displayImageWithBox(x, coords, label):
+    fig,ax = plt.subplots(1)
+    xmin, xmax, ymin, ymax = coords
+    ax.imshow(x)
+    rect = patches.Rectangle((xmin, ymin), (xmax-xmin), (ymax-ymin), linewidth=1,edgecolor='r',facecolor='none')
+    ax.add_patch(rect)
+    ax.text(xmin, ymin, label, size='x-large', color='white', bbox={'facecolor':'red', 'alpha':1.0})
+    plt.show()
+
+
 """
 Takes in a prediction array (the kind Keras model.predict() produces), and a list of classes.
 
@@ -305,7 +319,7 @@ def topClasses(prediction, classes, n=3):
 
 def init():
     print("Checking to make sure output directories are created..", end="", flush=True)
-    make_output_dirs([outputModelPath, outputFigPath, h5Path])
+    make_output_dirs([outputModelPath, outputFigPath, h5Path, trainhistory])
     print("..done")
 
 
@@ -578,6 +592,7 @@ def perClassAccuracy(model, x_val, y_val, encoder):
     return acc_df
 
 
+
 #USAGE
 """
 h5db = h5py.File(h5file, 'r')
@@ -614,4 +629,13 @@ def accuracies(df):
     acc5 = len(df[(df.truth == df.one) | (df.truth == df.two) | (df.truth == df.three) |  (df.truth == df.four) | (df.truth == df.five)]) / len(df)
     
     return [acc1, acc2, acc3, acc4, acc5]
+
+def confusion_matrix(truth, pred):
+    conf = pml.ConfusionMatrix(truth, pred)
+    return conf
+
+def display_confusion(conf):
+    conf.plot()
+    plt.show()
+    
 
