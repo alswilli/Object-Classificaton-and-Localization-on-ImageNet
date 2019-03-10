@@ -19,21 +19,22 @@ from keras.utils import layer_utils
 from keras.utils.data_utils import get_file
 from keras.applications.imagenet_utils import decode_predictions
 from keras.applications.imagenet_utils import preprocess_input
-from keras.applications.imagenet_utils import _obtain_input_shape
+# from keras.applications.imagenet_utils import _obtain_input_shape
 from keras.engine.topology import get_source_inputs
 
 WEIGHTS_PATH = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.2/resnet50_weights_tf_dim_ordering_tf_kernels.h5'
 WEIGHTS_PATH_NO_TOP = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.2/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5'
 
 # def ResNet50(n_classes, img_width=224, img_height=224, channels=3
-def build_model(n_classes, img_width=224, img_height=224, channels=3)
+def build_model(n_classes, img_width=224, img_height=224, channels=3, include_top=True, pooling='avg'):
     
     if K.image_data_format() == 'channels_first':
         input_shape = (channels, img_width, img_height)
     else:
         input_shape = (img_width, img_height, channels)
-
-    x = ZeroPadding2D((3, 3))(input_shape)
+    bn_axis = 3
+    img_input = Input(shape=input_shape)
+    x = ZeroPadding2D((3, 3))(img_input)
     x = Conv2D(64, (7, 7), strides=(2, 2), name='conv1')(x)
     x = BatchNormalization(axis=bn_axis, name='bn_conv1')(x)
     x = Activation('relu')(x)
@@ -63,7 +64,7 @@ def build_model(n_classes, img_width=224, img_height=224, channels=3)
 
     if include_top:
         x = Flatten()(x)
-        x = Dense(classes, activation='softmax', name='fc1000')(x)
+        x = Dense(n_classes, activation='softmax', name='fc1000')(x)
     else:
         if pooling == 'avg':
             x = GlobalAveragePooling2D()(x)
@@ -71,7 +72,7 @@ def build_model(n_classes, img_width=224, img_height=224, channels=3)
             x = GlobalMaxPooling2D()(x)
 
     # Create model.
-    model = Model(input_shape, x, name='resnet50')
+    model = Model(img_input, x, name='resnet50')
 
     return model
 
