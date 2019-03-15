@@ -107,47 +107,6 @@ def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2))
     x = Activation('relu')(x)
     return x
 
-
-def SwagNETv3(n_classes, img_width=224, img_height=224, channels=3):
-    input_shape = (img_width, img_height, channels)
-    inp = Input(shape=input_shape)
-    l2_reg = 0.0
-    
-    #SSD/RESNET Hybrid
-    x = ZeroPadding2D((3, 3))(inp)
-    x = Conv2D(64, (7, 7), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv1')(x)
-    x = BatchNormalization(axis=3, momentum=0.99, name='bn1')(x) 
-    x = ELU(name='elu1')(x)
-    x= Dropout(0.1)(x)
-    x = MaxPooling2D(pool_size=(2, 2), name='pool1')(x)
-
-    #Additional conv_block
-    x = conv_block(x, 3, [64, 64, 128], stage=1, block='a', strides=(1,1))
-
-    #RESNET COMPONENTS    
-    x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1))
-    x = identity_block(x, 3, [64, 64, 256], stage=2, block='b')
-    x = identity_block(x, 3, [64, 64, 256], stage=2, block='c')
-
-    x = conv_block(x, 3, [128, 128, 512], stage=3, block='a')
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='b')
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='c')
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='d')
-
-    x = AveragePooling2D((7, 7), name='avg_pool')(x)
-    x = Flatten()(x)
-    x = Dense(256, activation='relu')(x)
-    x = Dropout(0.25)(x)
-    x = Dense(512, activation='relu')(x)
-    x = Dropout(0.25)(x)
-    x = Dense(256, activation='relu')(x)
-    predictions = Dense(n_classes, activation='softmax', name='fc1000')(x)
-
-    model = Model(inputs=inp, outputs = predictions)
-
-    return model
-
-
 def build_model(image_size,
                 n_classes,
                 mode='training',
@@ -408,19 +367,11 @@ def build_model(image_size,
     x= Dropout(0.1)(x)
     x = MaxPooling2D(pool_size=(2, 2), name='pool1')(x)
 
-    #Additional conv_block
-    # x = conv_block(x, 3, [64, 64, 128], stage=1, block='a', strides=(1,1))
-
     #RESNET COMPONENTS    
     x = conv_block(x, 3, [16, 16, 32], stage=2, block='a', strides=(1, 1))
     x = identity_block(x, 3, [16, 16, 32], stage=2, block='b')
     x = identity_block(x, 3, [16, 16, 32], stage=2, block='c')
 
-    # x = conv_block(x, 3, [28, 28, 52], stage=3, block='a')
-    # x1 = identity_block(x, 3, [28, 28, 52], stage=3, block='b')
-    # x2 = identity_block(x, 3, [28, 28, 52], stage=3, block='c')
-    # x3 = identity_block(x, 3, [28, 28, 52], stage=3, block='d')
-    # x4 = identity_block(x, 3, [28, 28, 52], stage=3, block='e')
     x = conv_block(x, 3, [24, 24, 48], stage=3, block='a')
     x = identity_block(x, 3, [24, 24, 48], stage=3, block='b')
     x = identity_block(x, 3, [24, 24, 48], stage=3, block='c')

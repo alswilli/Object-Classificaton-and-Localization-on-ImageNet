@@ -6,7 +6,7 @@ import keras.backend as K
 
 
 
-def SSD(n_classes, img_width=224, img_height=224, channels=3):
+def SSD7(n_classes, img_width=224, img_height=224, channels=3):
     input_shape = (img_width, img_height, channels)
 
     if K.image_data_format() == 'channels_first':
@@ -17,7 +17,6 @@ def SSD(n_classes, img_width=224, img_height=224, channels=3):
     x = Input(shape=input_shape)
     l2_reg = 0.0
  
-
     conv1 = Conv2D(32, (5, 5), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv1')(x)
     conv1 = BatchNormalization(axis=3, momentum=0.99, name='bn1')(conv1) # Tensorflow uses filter format [filter_height, filter_width, in_channels, out_channels], hence axis = 3
     conv1 = ELU(name='elu1')(conv1)
@@ -51,22 +50,7 @@ def SSD(n_classes, img_width=224, img_height=224, channels=3):
     conv7 = Conv2D(32, (3, 3), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv7')(pool6)
     conv7 = BatchNormalization(axis=3, momentum=0.99, name='bn7')(conv7)
     conv7 = ELU(name='elu7')(conv7)
-    
-    # n_boxes = 4
-    # classes4 = Conv2D(n_boxes * n_classes, (3, 3), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='classes4')(conv4)
-    # classes5 = Conv2D(n_boxes * n_classes, (3, 3), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='classes5')(conv5)
-    # classes6 = Conv2D(n_boxes * n_classes, (3, 3), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='classes6')(conv6)
-    # classes7 = Conv2D(n_boxes * n_classes, (3, 3), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='classes7')(conv7)
 
-    # classes4_reshaped = Reshape((-1, n_classes), name='classes4_reshape')(classes4)
-    # classes5_reshaped = Reshape((-1, n_classes), name='classes5_reshape')(classes5)
-    # classes6_reshaped = Reshape((-1, n_classes), name='classes6_reshape')(classes6)
-    # classes7_reshaped = Reshape((-1, n_classes), name='classes7_reshape')(classes7)
-
-    # classes_concat = Concatenate(axis=1, name='classes_concat')([classes4_reshaped,
-    #                                                              classes5_reshaped,
-    #                                                              classes6_reshaped,
-    #                                                              classes7_reshaped])
     flat = Flatten()(conv7)
     dense = Dense(n_classes)(flat)
     predictions = Activation('softmax', name='classes_softmax')(dense)
@@ -76,7 +60,7 @@ def SSD(n_classes, img_width=224, img_height=224, channels=3):
     return model
 
 
-def ResNet(n_classes, img_width=224, img_height=224, channels=3, include_top=True, pooling='avg'):
+def ResNet50(n_classes, img_width=224, img_height=224, channels=3, include_top=True, pooling='avg'):
     input_shape = (img_width, img_height, channels)
     if K.image_data_format() == 'channels_first':
         input_shape = (channels, img_width, img_height)
@@ -205,110 +189,7 @@ def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2))
     return x
 
 
-def SwagNETv3(n_classes, img_width=224, img_height=224, channels=3):
-    
-
-     #SSD/RESNET Hybrid
-    # x = Conv2D(32, (5, 5), strides=(2, 2), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv1')(inp)
-    # x = BatchNormalization(axis=3, momentum=0.99, name='bn1')(x) # Tensorflow uses filter format [filter_height, filter_width, in_channels, out_channels], hence axis = 3
-    # x = ELU(name='elu1')(x)
-    # x = Dropout(0.1)(x)
-    # x = MaxPooling2D(pool_size=(2, 2), name='pool1')(x)
-
-    # x = ZeroPadding2D((3, 3))(inp)
-    # x = Conv2D(64, (7, 7), strides=(2, 2), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv1')(x)
-    # x = BatchNormalization(axis=3, momentum=0.99, name='bn1')(x) 
-    # x = ELU(name='elu1')(x)
-    # x= Dropout(0.1)(x)
-    # x = MaxPooling2D(pool_size=(2, 2), name='pool1')(x)
-
-
-
-
-
-
-
-
-
-
-    # x = ZeroPadding2D((3, 3))(inp)
-    # x = Conv2D(32, (5, 5), strides=(1, 1), kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv1')(x)
-    # x = BatchNormalization(axis=3, momentum=0.99, name='bn_conv1')(x)
-    # x = Activation('elu')(x)
-    # x = Dropout(0.1)(x)
-    # x = MaxPooling2D(pool_size = (2, 2))(x)
-
-    # x = Conv2D(48, (3, 3), strides=(1, 1), kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv2')(x)
-    # x = BatchNormalization(axis=3, momentum=0.99, name='bn_conv2')(x)
-    # x = Activation('elu')(x)
-    # x = Dropout(0.1)(x)
-    # x = MaxPooling2D(pool_size = (2, 2))(x)
-
-
-
-
-
-
-    #Additional conv_block
-    # x = conv_block(x, 3, [16, 16, 64], stage=1, block='a', strides=(1,1))
-    # x = identity_block(x, 3, [16, 16, 64], stage=1, block='b')
-
-    #RESNET COMPONENTS    
-    # x = conv_block(x, 3, [32, 32, 128], stage=2, block='a', strides=(1, 1))
-    # x = identity_block(x, 3, [32, 32, 128], stage=2, block='b')
-    # x = identity_block(x, 3, [32, 32, 128], stage=2, block='c')
-
-    # x = conv_block(x, 3, [64, 64, 256], stage=3, block='a')
-    # x = identity_block(x, 3, [64, 64, 256], stage=3, block='b')
-    # x = identity_block(x, 3, [64, 64, 256], stage=3, block='c')
-    # x = identity_block(x, 3, [64, 64, 256], stage=3, block='d')
-
-    # x = conv_block(x, 3, [64, 64, 256], stage=4, block='a')
-    # x = identity_block(x, 3, [64, 64, 256], stage=4, block='b')
-    # x = identity_block(x, 3, [64, 64, 256], stage=4, block='c')
-    # x = identity_block(x, 3, [64, 64, 256], stage=4, block='d')
-
-    # x = conv_block(x, 3, [128, 128, 512], stage=5, block='a')
-    # x = identity_block(x, 3, [128, 128, 512], stage=5, block='b')
-    
-    
-    
-        # x = Dense(n_classes, activation='relu')(x)
-    # x = Dropout(0.25)(x)
-    # x = Dense(n_classes, activation='relu')(x)
-
-
-
-    
-    # #SSD/RESNET Hybrid
-    # x = ZeroPadding2D((3, 3))(inp)
-    # x = Conv2D(64, (7, 7), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv1')(x)
-    # x = BatchNormalization(axis=3, momentum=0.99, name='bn1')(x) 
-    # x = ELU(name='elu1')(x)
-    # x= Dropout(0.1)(x)
-    # x = MaxPooling2D(pool_size=(2, 2), name='pool1')(x)
-
-    # #Additional conv_block
-    # # x = conv_block(x, 3, [32, 32, 128], stage=1, block='a', strides=(1,1))
-
-    # #RESNET COMPONENTS    
-    # x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1))
-    # x = identity_block(x, 3, [64, 64, 256], stage=2, block='b')
-    # x = identity_block(x, 3, [64, 64, 256], stage=2, block='c')
-
-    # x = conv_block(x, 3, [128, 128, 512], stage=3, block='a')
-    # x = identity_block(x, 3, [128, 128, 512], stage=3, block='b')
-    # x = identity_block(x, 3, [128, 128, 512], stage=3, block='c')
-    # x = identity_block(x, 3, [128, 128, 512], stage=3, block='d')
-
-    # x = AveragePooling2D((7, 7), name='avg_pool')(x)
-    # x = Flatten()(x)
-    # x = Dense(32, activation='relu')(x)
-    # x = Dropout(0.25)(x)
-    # x = Dense(32, activation='relu')(x)
-    # x = Dropout(0.25)(x)
-    # x = Dense(16, activation='relu')(x)
-    
+def finalModel(n_classes, img_width=224, img_height=224, channels=3):  
     input_shape = (img_width, img_height, channels)
     if K.image_data_format() == 'channels_first':
         input_shape = (channels, img_width, img_height)
@@ -318,14 +199,15 @@ def SwagNETv3(n_classes, img_width=224, img_height=224, channels=3):
     inp = Input(shape=input_shape)
     l2_reg = 0.0
     
+    # Initial Conv + Pooling layer with Dropout
     x = ZeroPadding2D((3, 3))(inp)
     x = Conv2D(64, (7, 7), strides=(2, 2), name='conv1')(x)
     x = BatchNormalization(axis=3, name='bn_conv1')(x)
     x = Activation('relu')(x)
     x = Dropout(0.1)(x)
     x = MaxPooling2D((3, 3), strides=(2, 2))(x)
-    
-    
+
+    # Residual blocks
     x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1))
     x = identity_block(x, 3, [64, 64, 256], stage=2, block='b')
     x = identity_block(x, 3, [64, 64, 256], stage=2, block='c')
@@ -346,12 +228,12 @@ def SwagNETv3(n_classes, img_width=224, img_height=224, channels=3):
     x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
     x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
 
-
     x = AveragePooling2D((7, 7), name='avg_pool')(x)
+
+    # Final Dense layers with more Dropout 
     x = Flatten()(x)
     x = Dense(2048, activation='relu')(x)
     x = Dropout(0.25)(x)
-
     predictions = Dense(n_classes, activation='softmax', name='fc1000')(x)
 
     model = Model(inputs=inp, outputs = predictions)

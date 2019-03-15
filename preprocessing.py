@@ -169,10 +169,7 @@ def parseImages(folders, filename, img_width=224, img_height=224):
             output.close()
         else:
             with h5py.File(path, 'a') as hf:
-                # print(hf['x_train'].shape)
                 hf['x_train'].resize((hf['x_train'].shape[0] + df_train.x.shape[0], img_width, img_height, 3))
-                # print(len(x_train))
-                # print(df_train.x.shape)
                 
                 hf['x_train'][-df_train.x.shape[0]:] = list(df_train.x)
 
@@ -280,8 +277,6 @@ def augmentData2(x, y, augments = [], p=1.0, replace=False):
                 y_aug.append(y[idx])
             else:
                 x_old[idx] = augmented
-            # x.append(x[idx])
-            # y.append(y[idx])
     if not replace:
         x_old = np.concatenate((x_old, x_aug))
         y_old = np.concatenate((y_old, y_aug))
@@ -384,12 +379,6 @@ class DataGenerator(keras.utils.Sequence):
             
             x = db['x_'+self.set][idxs]
             y = db['y_'+self.set][idxs]
-        #TESTING FOR MULTIPROCESSING
-        # for k in y:
-        #     try:
-        #         k.decode('utf-8')
-        #     except:
-        #         print(y)
         
         y = [k.decode('utf-8') for k in y]
         
@@ -475,18 +464,12 @@ class DataGenerator3(keras.utils.Sequence):
 
     def __getitem__(self, index):
         'Generate one batch of data'
-        # idxs = list(self.index_sets[self.batch_num])
 
 
         with h5py.File(self.h5file, 'r') as db:
             
             start = self.batch_num * self.batch_size
-            # start = self.index_sets[self.batch_num]
             end = min(self.data_length, start+ self.batch_size)
-
-            # print("Start: {0}, End: {1}, : Range: {2}".format(start, end, self.data_length))
-            # x = db['x_'+self.set][start:start+self.batch_size]
-            # y = db['y_'+self.set][start:start+self.batch_size]
 
             x = db['x_'+self.set][start:end]
             y = db['y_'+self.set][start:end]
@@ -511,7 +494,6 @@ class DataGenerator3(keras.utils.Sequence):
         for i in range(len(nan_check)):
             if True in nan_check[i]:
                 print('NAN @ INDEX {0}'.format(i))
-                # print('Index num: {0}'.format(idxs[i]))
             else:
                 x_new.append(x[i])
                 y_new.append(y[i])
@@ -531,16 +513,6 @@ class DataGenerator3(keras.utils.Sequence):
         
 
     def on_epoch_end(self):
-        # idxs = [k*self.batch_size for k in range(0, len(self)+1)]
-        # np.random.shuffle(idxs)
-        # if self.shuffle:
-        #     idxs = np.random.permutation(self.data_length)
-        # else:
-        #     idxs = np.arange(0, self.data_length)
-        
-        # sets = utils.chunks(idxs, self.batch_size)
-        # self.index_sets = idxs
-
         
         if self.set == 'train' and self.batch_num==0 and self.shuffle:
             self.h5file = shuffleH5(self.baseh5file, inplace=True)
@@ -569,7 +541,6 @@ def predictionsToDataframe(model, x_val, y_val, encoder):
         four.append(top[3][0])
         five.append(top[4][0])
 
-    # print(encoder.inverse_transform(y_val))
     df = pd.DataFrame({'truth': [translateID(x) for x in encoder.inverse_transform(y_val)],
                       'one': one,
                       'two': two,
