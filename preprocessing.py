@@ -187,13 +187,14 @@ def parseImages(folders, filename, img_width=224, img_height=224):
 
 
             
-"""
+
+
+def loadH5(filename):
+    """
 Loads a single h5 file, from the default h5 output path. 
 
 The file should already exist and have been created with parseImages, or it will return empty. 
 """
-
-def loadH5(filename):
     x_t, y_t, x_v, y_v = [], [], [], []
     path = os.path.join(h5Path, filename)
     if os.path.exists(path):
@@ -207,12 +208,13 @@ def loadH5(filename):
     y_v = [y.decode('utf-8') for y in y_v]
     return x_t, y_t, x_v, y_v 
 
-"""
+
+def loadH5s(ids):
+    """
 Loads a list of h5 files, from the default h5 output path, given a list of training class id.
 
 The file should already exist and have been created with parseImages, or it will be skipped over. 
 """
-def loadH5s(ids):
     x_train, y_train, x_val, y_val = [],[],[],[]
 
     for id in ids:
@@ -225,18 +227,25 @@ def loadH5s(ids):
     return x_train, y_train, x_val, y_val 
 
 def translateID(id):
+    """
+    Simply looks up the raw imagenet id and provides the human-readable label. 
+    """
     return wnids_to_words[id]
 
 def getClassLabels():
+    """
+    Gets all class ids that have bounding boxes. 
+    """
     boxesDF = pd.read_csv(bboxesPath)
     labels = boxesDF.ids.unique()
     return labels
 
 
-"""
-Augments data and returns x_aug, y_aug
-"""
+
 def augmentData(x, y, augments = [], p=1.0, replace=False):
+     """
+    Augments data by shuffling augments and looping through data. Applies 1 random augment to an image with probability p. 
+    """
     x_new, y_new = np.copy(x), np.copy(y)
     
     x_aug, y_aug = [], []
@@ -263,6 +272,9 @@ def augmentData(x, y, augments = [], p=1.0, replace=False):
     return x_new, y_new
 
 def augmentData2(x, y, augments = [], p=1.0, replace=False):
+    """
+    Augments data by shuffling augments and looping through data. Applies 1 random augment to an image with probability p. 
+    """
     x_old, y_old = np.copy(x), np.copy(y)
     x_aug, y_aug = [], []
     idxs = [i for i in range(0, len(x))]
@@ -285,10 +297,15 @@ def augmentData2(x, y, augments = [], p=1.0, replace=False):
     return x_old, y_old
 
 def displayImage(x):
+    """
+    Convenience function that displays an image with pyplot. 
+    """
     plt.imshow(x)
 
-'coords in format: (xmin, xmax, ymin, ymax)'
 def displayImageWithBox(x, coords, label):
+    """
+    Displays an image with a rectangular box placed around a section of the image, given by coords: (xmin, xmax, ymin, ymax)
+    """
     fig,ax = plt.subplots(1)
     xmin, xmax, ymin, ymax = coords
     ax.imshow(x)
@@ -313,6 +330,9 @@ def topClasses(prediction, classes, n=3):
 
 
 def init():
+    """
+    Simple initialization to make sure output directories are made beforehand.
+    """
     print("Checking to make sure output directories are created..", end="", flush=True)
     make_output_dirs([outputModelPath, outputFigPath, h5Path, trainhistory])
     print("..done")
@@ -321,7 +341,9 @@ def init():
 
 
 def shuffleH5(filepath, inplace=False):
-    
+    """
+    Shuffles the training data in an h5, in place. 
+    """
     outpath = os.path.join(h5Path, 'shuffle.h5')
 
     data = h5py.File(filepath, 'r+')
@@ -341,7 +363,10 @@ def shuffleH5(filepath, inplace=False):
     return filepath
 
 class DataGenerator(keras.utils.Sequence):
-
+    """
+    Original data generator. Does not shuffle the whole dataset, instead selects the indices of the H5 file and 
+    randomly shuffles them, then accesses a set of indices according to the batch size. LESS EFFICIENT THAN DATAGENERATOR3. 
+    """
     def __init__(self, h5file, classes, batch_size=32, isValidation = False, shuffle=False, augmentations = [], augment_pct=0.25):
         self.h5file = h5file
         self.isValidation = isValidation
@@ -429,6 +454,11 @@ class DataGenerator(keras.utils.Sequence):
 
 
 class DataGenerator3(keras.utils.Sequence):
+    """
+    Generates batches of data. Additional arguments to shuffle the data every epoch and augment the data. 
+
+    Use with keras.model.fit_generator(...) 
+    """
 
     def __init__(self, h5file, classes, batch_size=32, isValidation = False, 
         shuffle=False, augmentations = [], augmentReplace = True, augment_pct=0.25):
@@ -522,6 +552,10 @@ class DataGenerator3(keras.utils.Sequence):
 
 
 def predictionsToDataframe(model, x_val, y_val, encoder):
+
+    """
+    Calculates model predictions and places them in a dataframe. Shows top1-5 predicitons against the truth label. 
+    """
     y_val = [k.decode('utf-8') for k in y_val]
     y_val = encoder.transform(y_val)
     y_val = np.array(y_val)
@@ -550,7 +584,13 @@ def predictionsToDataframe(model, x_val, y_val, encoder):
 
     return df
 
+
+
 def perClassAccuracy(model, x_val, y_val, encoder):
+
+    """
+    Returns a dataframe with all classes sorted by top-1 accuracy, but displays all top-1 to top-5 accuracies, per class.
+    """
     df = predictionsToDataframe(model, x_val,  y_val, encoder)
     labels = df.truth.unique()
     accs = [accuracies(df[df.truth == label]) for label in labels]
@@ -565,12 +605,14 @@ def perClassAccuracy(model, x_val, y_val, encoder):
 
 
 #USAGE
-"""
-h5db = h5py.File(h5file, 'r')
-x_val = np.array(h5db['x_val'])
-top3accuracies(model, h5db['x_val][:], h5db[y_val][:])
-"""
+
 def top5accuracies(model, x_val, y_val, encoder):
+    """
+    Computes Top 5 accuracies of a model, given (x_val, y_val) and the encoder that encodes the labels in y_val. 
+    h5db = h5py.File(h5file, 'r')
+    x_val = np.array(h5db['x_val'])
+    top3accuracies(model, h5db['x_val][:], h5db[y_val][:])
+    """
     df = predictionsToDataframe(model, x_val, y_val, encoder)
     
     acc1 = len(df[df.truth == df.one])/len(df)

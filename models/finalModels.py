@@ -7,6 +7,9 @@ import keras.backend as K
 
 
 def SSD7(n_classes, img_width=224, img_height=224, channels=3):
+    """
+    SSD7 model, pulled from ssd_keras, and modified to fit our pipeline. Removes all bounding box operations and simply does classification with convolutions instead of the joint classification/localization task. 
+    """
     input_shape = (img_width, img_height, channels)
 
     if K.image_data_format() == 'channels_first':
@@ -61,6 +64,10 @@ def SSD7(n_classes, img_width=224, img_height=224, channels=3):
 
 
 def ResNet50(n_classes, img_width=224, img_height=224, channels=3, include_top=True, pooling='avg'):
+
+    """
+    ResNet50 model, pulled from keras and modified slightly to fit our pipeline. 
+    """
     input_shape = (img_width, img_height, channels)
     if K.image_data_format() == 'channels_first':
         input_shape = (channels, img_width, img_height)
@@ -189,7 +196,11 @@ def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2))
     return x
 
 
-def finalModel(n_classes, img_width=224, img_height=224, channels=3):  
+def finalModel(n_classes, img_width=224, img_height=224, channels=3):
+
+    """
+    Builds final model with three stages: 1) Pooled Convolutional Layer, 2) ResNet-style residual blocks, 3) fully-connected network. 
+    """
     input_shape = (img_width, img_height, channels)
     if K.image_data_format() == 'channels_first':
         input_shape = (channels, img_width, img_height)
