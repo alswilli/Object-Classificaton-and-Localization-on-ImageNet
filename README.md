@@ -1,4 +1,4 @@
-# cmps240
+# Object-Classificaton-and-Localization-on-ImageNet
 CMPS240 Project repo 
 
 Resources: 
